@@ -3,23 +3,20 @@
   "logo": "./dong.gif",
   "warningText": "免费仅限测试用，请勿演示贩卖购买！提示:\n📢接口软件永远免费 \n📢长期维护切勿贩卖",
   "sites": [
-              {
-      "name": "哈基咪配置｜中心",
+                 {
+      "name": "免费仅限测试用，请勿演示贩卖购买！",
       "key": "Douban",
       "type": 3,
-      "api": "csp_DoubanAmns",          
+      "api": "csp_DoubanAmns",
       "jar": "./js/aw.png",
       "indexs": 1,
       "searchable": 0,
       "quickSearch": 0,
       "changeable": 1,
       "ext": "Douban"
-    },    
-          
-              
-          
+    },
 
-    
+  
      {
             "key": "配置中心",
             "name": "哈基咪配置｜中心",
@@ -740,6 +737,13 @@
   
     "wallpaper": "https://饭的动态壁纸.xxooo.cf/",
     "lives": [
+{
+      "name": "直播",
+      "type": 0,
+      "url": "https://g.blfrp.cn/https://raw.githubusercontent.com/cyh92/live/refs/heads/main/source/migu.m3u",
+      "epg": "https://diyp32.112114.xyz/?ch={name}&date={date}",
+      "logo": "https://diyp32.112114.xyz/logo/{name}.png"
+    },
 
 {
       "name": "线路①",
