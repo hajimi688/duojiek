@@ -122,7 +122,30 @@
         "tabsSet": "极速蓝光"
       }
     },
-
+   {
+      "key": "干饭",
+      "name": "干饭｜蓝光",
+      "type": 3,
+      "api": "csp_AppGet",
+      "jar": "https://raw.giteeusercontent.com/li-shengkai/qh/raw/master/46da6-aa33493f-1c1d-4f35-9990-0be4bdbf0c64.png",
+      "ext": "https://www.douy32mf.top|1234567887654321"
+    },
+    {
+      "key": "咕噜咕噜4K_修复版_可搜索_带直播",
+      "name": "咕噜｜蓝光",
+      "type": 3,
+      "api": "./py/咕噜咕噜.py",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 0
+    },
+     {
+      "key": "Yidong4K",
+      "name": "哈吉咪｜秒播",
+      "type": 3,
+      "jar": "./custom_spider.jar",
+      "api": "csp_Yidong4K"
+    },
        {
       "name": "金牌｜秒播",
       "key": "JinPai",
