@@ -139,14 +139,6 @@
       "quickSearch": 1,
       "filterable": 0
     },
-    {
-            "key": "808影视",
-            "name": "八零｜蓝光",
-            "type": 3,
-            "api": "./py/808影视.py"
-        },
-
-
      {
       "key": "Yidong4K",
       "name": "哈吉咪｜秒播",
