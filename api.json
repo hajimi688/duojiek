@@ -84,10 +84,6 @@
       "filterable": 1,
       "playerType": 2
     },
-    
-
-
-    
     {
       "key": "热播影视",
       "name": "热播｜影視",
@@ -139,20 +135,6 @@
       "quickSearch": 1,
       "filterable": 0
     },
-     {
-            "key": "多米┃影视",
-            "name": "多米｜蓝光",
-            "type": 3,
-            "api": "./py/多多.py",
-            "style": {
-                "type": "rect",
-                "ratio": 1.33
-            },
-            "quickSearch": 1
-        },
-
-
-
      {
       "key": "Yidong4K",
       "name": "哈吉咪｜秒播",
