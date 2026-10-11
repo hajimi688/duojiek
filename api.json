@@ -140,6 +140,17 @@
       "filterable": 0
     },
     {
+            "key": "八戒影视",
+            "name": "八戒｜蓝光",
+            "type": 3,
+            "api": "./py/八戒影视.py",
+            "searchable": 1,
+            "changeable": 1,
+            "quickSearch": 1,
+            "filterable": 1
+        },
+
+    {
       "key": "Yidong4K",
       "name": "哈吉咪｜秒播",
       "type": 3,
@@ -762,6 +773,112 @@
       "ua": "okhttp/3",
       "epg": "https://epg.112114.eu.org/?ch={name}&date={date}",
       "logo": "https://epg.112114.eu.org/logo/{name}.png"
+    },
+  {
+		    "name": "直播live",
+		    "type": 0,
+		    "url": "https://g.blfrp.cn/https://raw.githubusercontent.com/taoBox2620/taoBox2620/main/logo1.png",
+		    "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	
+  {
+		    "name": "虎牙直播",
+		    "type": 0,
+		    "url": "https://sub.ottiptv.cc/huyayqk.m3u",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	 
+	    {
+		    "name": "斗鱼直播",
+		    "type": 0,
+		    "url": "https://sub.ottiptv.cc/douyuyqk.m3u",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	
+	    {
+		    "name": "哔哩直播",
+		    "type": 0,
+		    "url": "https://sub.ottiptv.cc/bililive.m3u",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	 
+	    {
+		    "name": "歪歪直播",
+		    "type": 0,
+		    "url": "https://sub.ottiptv.cc/yylunbo.m3u",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	  
+	    {
+		    "name": "吴江六直播",
+		    "type": 0,
+		    "url": "http://47.120.41.246:8025/vip/jar/zb.php",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	
+	    {
+		    "name": "高清咪咕直播1",
+		    "type": 0,
+		    "url": "http://82.156.245.233:30008/",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	 
+	    {
+		    "name": "高清咪咕直播2",
+		    "type": 0,
+		    "url": "http://112.80.137.135:1234/",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	  
+	    {
+		    "name": "高清咪咕直播3",
+		    "type": 0,
+		    "url": "http://www.52top.com.cn:678/list.php?fileid=migu",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	
+	    {
+		    "name": "高清咪咕直播4",
+		    "type": 0,
+		    "url": "http://45.78.61.93:1234/",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	  
+	    {
+		    "name": "高清咪咕直播5",
+		    "type": 0,
+		    "url": "http://113.98.11.46:3000/",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	
+  {
+		    "name": "央视直播",
+		    "type": 0,
+		    "url": "https://live.hacks.tools/tv/ipv4/categories/央视频道.m3u",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	  
+	    {
+		    "name": "卫视直播",
+		    "type": 0,
+		    "url": "https://live.hacks.tools/tv/ipv4/categories/卫视频道.m3u",
+		     "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+                    "logo": "https://www.cttv.vip/ys/images/{name}.png"
+	    },	           
+  {
+      "name": "郭伟直播",
+      "type": 0,
+      "url": "https://g.blfrp.cn/https://raw.githubusercontent.com/Guovin/TV/gd/output/result.txt",
+      "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+      "logo": "https://www.cttv.vip/ys/images/{name}.png"
+    },  
+
+    {
+      "name": "高清咪咕直播6",
+      "type": 0,
+      "url": "http://122.227.204.50:1905/",
+      "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+      "logo": "https://www.cttv.vip/ys/images/{name}.png"
     },
 
 {
