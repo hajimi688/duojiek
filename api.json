@@ -139,16 +139,17 @@
       "quickSearch": 1,
       "filterable": 0
     },
-    {
-            "key": "八戒影视",
-            "name": "八戒｜蓝光",
+  {
+            "key": "蝴蝶影视",
+            "name": "蝴蝶☆4 K",
             "type": 3,
-            "api": "./py/八戒影视.py",
+            "api": "./py/蝴蝶影视.py",
             "searchable": 1,
             "changeable": 1,
             "quickSearch": 1,
             "filterable": 1
         },
+
 
     {
       "key": "Yidong4K",
