@@ -1,7 +1,7 @@
 {
   "spider": "./hh.jar",
   "logo": "./dong.gif",
-  "warningText": "声明：资源来自网络，无盈利，所有内容仅供学习测试使用，请勿用于违法及商业用途，请勿付费购买，测试之后请自行删除]",
+  "warningText": "免费仅限测试用，请勿演示贩卖购买！提示:\n📢接口软件永远免费\n📢长期维护切勿贩卖\n⚠️本接口依赖同目录资源包(hh.jar / js / py / lib)，请勿单独使用",
   "sites": [
             {
       "key": "豆瓣",
@@ -121,6 +121,30 @@
         "catesSet": "电影&电视剧&综艺&动漫&纪录片",
         "tabsSet": "极速蓝光"
       }
+    },
+     {
+      "key": "干饭",
+      "name": "干饭｜蓝光",
+      "type": 3,
+      "api": "csp_AppGet",
+      "jar": "https://raw.giteeusercontent.com/li-shengkai/qh/raw/master/46da6-aa33493f-1c1d-4f35-9990-0be4bdbf0c64.png",
+      "ext": "https://www.douy32mf.top|1234567887654321"
+    },
+    {
+      "key": "咕噜咕噜4K_修复版_可搜索_带直播",
+      "name": "咕噜｜蓝光",
+      "type": 3,
+      "api": "./py/咕噜咕噜.py",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 0
+    },
+    {
+      "key": "Yidong4K",
+      "name": "哈吉咪｜秒播",
+      "type": 3,
+      "jar": "./custom_spider.jar",
+      "api": "csp_Yidong4K"
     },
 
        {
@@ -730,6 +754,15 @@
   
     "wallpaper": "https://饭的动态壁纸.xxooo.cf/",
     "lives": [
+ {
+      "name": "直播①",
+      "type": 0,
+      "url": "https://g.blfrp.cn/https://raw.githubusercontent.com/cyh92/live/refs/heads/main/source/migu.m3u",
+      "playerType": 2,
+      "ua": "okhttp/3",
+      "epg": "https://epg.112114.eu.org/?ch={name}&date={date}",
+      "logo": "https://epg.112114.eu.org/logo/{name}.png"
+    },
 
 {
       "name": "线路①",
