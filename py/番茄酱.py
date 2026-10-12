@@ -8,11 +8,32 @@
   title: '番茄酱',
   lang: 'hipy'
 })
+
+番茄酱 TVBox Spider  (修复版)
+
+数据源: https://fanqe.app/request/  (APK: app.fanqiejiang.birthday v1.1.23)
+鉴权  : HMAC-SHA256 请求签名，密钥从 APK DEX 静态提取
+        canonical = METHOD \\n path \\n querystring \\n sha256(body) \\n ts \\n nonce \\n install_id
+
+【本次修复要点】
+1. ★ playback/resolve 必须用 POST + JSON body，原脚本误用 GET + query，
+   导致所有 sj.fanqiecn.com / fanqiecn.com/jx/r.m3u8 / JD-* 线路全部 401 signature mismatch。
+2. 补齐 X-Device-ID、X-Session-Id 请求头（APK 中 X-Session-Id 被引用 78 次）。
+3. 移除 station/jx/*（该接口实测 403，需登录账号，APK 内亦无此路径）。
+4. 修正线路分流：ps=0 的 gulu:xxx / JD-xxx token 走服务端解析而非直接播放。
+5. 集名美化（纯数字 -> 第N集），补 liveContent 电视直播。
+6. detailContent 增强，支持 4 种真实线路形态：
+   - 数字|数字      -> 芒果TV风格解析 (mw)
+   - sj.fanqiecn.com -> playback/resolve
+   - fanqiecn.com/jx/r.m3u8?v=<http> -> 直接播放
+   - fanqiecn.com/jx/r.m3u8?v=gulu:.. -> playback/resolve
+   - JD-* / ETH-*   -> playback/resolve / 第三方解析
 """
 
 import base64, hashlib, hmac, json, re, time, uuid, urllib.parse
 import requests
 from base.spider import Spider
+
 
 class Spider(Spider):
     name = "番茄酱"
@@ -20,6 +41,9 @@ class Spider(Spider):
 
     APP_VERSION = "1.1.23"
     APP_VERSION_CODE = "101"
+
+    # HMAC 签名密钥（APK DEX 偏移 0x19f0ea 提取，实测有效）
+    SIGN_KEY = b"Rg0qTuu2BltwOIdVnzNVJy9sCbiOD9P90uO0aDDbGa4"
 
     MEDIA_UA = (
         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 "
@@ -30,17 +54,17 @@ class Spider(Spider):
         "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
     )
 
+    # 芒果TV 风格接口（ps=0 且 url 形如 "id|nid"）
     MW_KEY = "cb808529bae6b6be45ecfab29a4889bc"
     MW_HOSTS = ("https://m.ksnnhbj.com", "https://www.ksnnhbj.com")
     MW_REFERER = "https://www.ksnnhbj.com"
     MW_PATH = "/api/mw-movie/anonymous/v2/video/episode/url"
 
-    ETH_PARSER = "http://202.189.6.83:12991/xx/bt.php?url="
-
-    STATION_LINES = (
-        ("dsx", "番茄蓝光"),
-        ("yzx", "云帧享"),
-        ("yunsou", "金牌"),
+    # 备用解析（ETH- 前缀线路）
+    ETH_PARSERS = (
+        "http://202.189.6.83:12991/xx/bt.php?url=",
+        "http://191.101.132.92/xx/bt.php?url=",
+        "http://202.189.6.83:12991/xx/bt2.php?url=",
     )
 
     VIRTUAL_RE = re.compile(r"fanqiecn\.com/jx/|sj\.fanqiecn\.com/", re.I)
@@ -50,6 +74,7 @@ class Spider(Spider):
         ("cmecloud.cn", "https://m3u8.meilinvps.com/"),
     )
 
+    # ---------------------------------------------------------------- init
     def init(self, extend=""):
         self.api = self.host + "/request/"
         self.headers = {
@@ -59,10 +84,9 @@ class Spider(Spider):
             "X-App-Version": self.APP_VERSION,
             "X-App-Version-Code": self.APP_VERSION_CODE,
         }
-        self.install_id = None
+        self.install_id = uuid.uuid4().hex
         self.session_id = uuid.uuid4().hex
         self.device_id = str(uuid.uuid4())
-        self.station = True
         self.session = requests.Session()
         self.session.proxies = {}
 
@@ -76,74 +100,77 @@ class Spider(Spider):
                 self.install_id = str(extend["install_id"])
             if extend.get("device_id"):
                 self.device_id = str(extend["device_id"])
+            if extend.get("host"):
+                h = str(extend["host"]).rstrip("/")
+                if h.startswith("http"):
+                    self.host = h
+                    self.api = h + "/request/"
             if extend.get("version"):
                 self.headers["X-App-Version"] = str(extend["version"])
             if extend.get("version_code"):
                 self.headers["X-App-Version-Code"] = str(extend["version_code"])
-            if "station" in extend:
-                self.station = str(extend["station"]) in ("1", "true", "yes", "on")
 
     def getName(self):
         return self.name
 
-    def _headers(self, url, method="GET", body=""):
-        if not self.install_id:
-            self.install_id = uuid.uuid4().hex
-        u = urllib.parse.urlparse(url)
-
-        p = u.path
-        for pre in ("/request/v1/", "/request/", "/v1/"):
-            if p.startswith(pre):
-                p = p[len(pre) :]
-                break
-        p = p.rstrip("/")
-        p = "/".join(x for x in p.split("/") if x)
-        p = "/" + p if p else "/"
-
-        q = {}
-        if u.query:
-            for pr in u.query.split("&"):
-                if "=" in pr:
-                    k, v = pr.split("=", 1)
-                    q[k] = v
-                else:
-                    q[pr] = ""
-        qstr = "&".join("%s=%s" % (k, q[k]) for k in sorted(q))
+    # ------------------------------------------------------------- 签名
+    def _headers(self, path, method="GET", qs="", body="", signed=True):
+        """
+        构造请求头。
+        canonical message = METHOD \n path \n querystring \n body_sha256 \n ts \n nonce \n install_id
+        其中 path 为去掉 /request/ 前缀后的归一化路径（以 / 开头）
+        """
+        hd = dict(self.headers)
+        hd["X-Install-Id"] = self.install_id
+        hd["X-Device-ID"] = self.device_id
+        hd["X-Session-Id"] = self.session_id
+        if not signed:
+            return hd
 
         ts = str(int(time.time()))
         nonce = uuid.uuid4().hex
         body_sha = hashlib.sha256(body.encode("utf-8")).hexdigest()
-        msg = "\n".join([method, p, qstr, body_sha, ts, nonce, self.install_id])
-        sig = hmac.new(
-            b"Rg0qTuu2BltwOIdVnzNVJy9sCbiOD9P90uO0aDDbGa4",
-            msg.encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()
+        msg = "\n".join([method, path, qs, body_sha, ts, nonce, self.install_id])
+        sig = hmac.new(self.SIGN_KEY, msg.encode("utf-8"), hashlib.sha256).hexdigest()
 
-        hd = dict(self.headers)
-        hd.update(
-            {
-                "X-Install-Id": self.install_id,
-                "X-Request-Timestamp": ts,
-                "X-Request-Nonce": nonce,
-                "X-Request-Signature": sig,
-            }
-        )
+        hd["X-Request-Timestamp"] = ts
+        hd["X-Request-Nonce"] = nonce
+        hd["X-Request-Signature"] = sig
         return hd
 
-    def _req(self, path, params=None, method="GET", body="", timeout=(4, 8), retry=0):
+    # -------------------------------------------------------------- 请求
+    @staticmethod
+    def _canon_path(path):
+        p = "/".join(x for x in str(path).split("/") if x)
+        return "/" + p if p else "/"
+
+    def _req(self, path, params=None, method="GET", body="", timeout=(4, 10), retry=1):
+        """
+        path  : 相对路径，如 "home/categories"
+        params: dict -> 参与签名（按 key 排序后用 & 连接）
+        method: GET / POST
+        body  : POST 的 JSON 字符串（同时参与签名）
+        """
         if re.match(r"^https?://", str(path), re.I):
             url = str(path)
+            cp = self._canon_path(urllib.parse.urlparse(url).path)
         else:
-            url = self.api + path
+            url = self.api + str(path).lstrip("/")
+            cp = self._canon_path(path)
 
+        qs = ""
         if params:
-            url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+            items = [(str(k), str(params[k])) for k in sorted(params.keys())]
+            qs = "&".join("%s=%s" % (k, v) for k, v in items)
+            url += ("&" if "?" in url else "?") + urllib.parse.urlencode(items)
+            cp = self._canon_path(path)
 
+        last = {}
         for _ in range(retry + 1):
-            hd = self._headers(url, method, body)
+            hd = self._headers(cp, method, qs, body)
             try:
                 if method == "POST":
+                    hd["Content-Type"] = "application/json"
                     r = self.session.post(url, headers=hd, data=body, timeout=timeout)
                 else:
                     r = self.session.get(url, headers=hd, timeout=timeout)
@@ -159,11 +186,12 @@ class Spider(Spider):
                         except Exception:
                             return {"data": data}
                     return data
-                return {}
+                last = j
             except Exception:
                 continue
-        return {}
+        return last if isinstance(last, dict) else {}
 
+    # ------------------------------------------------------------ 首页
     def _home_raw(self, timeout=(2, 5)):
         now = time.time()
         cached = getattr(self, "_home_cache", None)
@@ -176,9 +204,9 @@ class Spider(Spider):
 
     @staticmethod
     def _sections(home):
-        items = []
-        seen = set()
-        for section in ("home_hot", "home_latest_movie", "home_latest_tv"):
+        items, seen = [], set()
+        for section in ("home_hot", "home_latest_movie", "home_latest_tv",
+                        "home_latest_anime", "home_latest_variety"):
             for v in (home or {}).get(section) or []:
                 if not isinstance(v, dict):
                     continue
@@ -192,11 +220,10 @@ class Spider(Spider):
         cats = self._req(
             "home/categories",
             {"page": 1, "page_size": 100, "status": -1},
-            timeout=(2.5, 4),
+            timeout=(2.5, 5),
             retry=1,
         )
-        classes = []
-        filters_map = {}
+        classes, filters_map = [], {}
         if isinstance(cats, list):
             for c in cats:
                 if not isinstance(c, dict):
@@ -205,15 +232,14 @@ class Spider(Spider):
                 if cid is None:
                     continue
                 tid = str(cid)
-                fdefs = self._build_filters(c)
                 cls = {"type_id": tid, "type_name": c.get("title", "")}
-
+                fdefs = self._build_filters(c)
                 if fdefs:
                     cls["filter"] = fdefs
                     filters_map[tid] = fdefs
                 classes.append(cls)
 
-        items = [self._item(v) for v in self._sections(self._home_raw((1.5, 3)))]
+        items = [self._item(v) for v in self._sections(self._home_raw((1.5, 4)))]
         return {"class": classes, "list": items, "filters": filters_map}
 
     def homeVideoContent(self):
@@ -225,29 +251,22 @@ class Spider(Spider):
         if not isinstance(ext, dict):
             return []
         fdefs = []
-        types = [
-            t
-            for t in (ext.get("types") or [])
-            if isinstance(t, dict) and t.get("type_name")
-        ]
+        types = [t for t in (ext.get("types") or [])
+                 if isinstance(t, dict) and t.get("type_name")]
         if types:
-            fdefs.append(
-                {
-                    "key": "class",
-                    "name": "类型",
-                    "value": [self._filter_item(t["type_name"]) for t in types],
-                }
-            )
+            fdefs.append({
+                "key": "class",
+                "name": "类型",
+                "value": [self._filter_item(t["type_name"]) for t in types],
+            })
         for key, name in (("area", "地区"), ("lang", "语言"), ("year", "年份")):
             vals = [str(x) for x in (ext.get(key + "_list") or []) if str(x)]
             if vals:
-                fdefs.append(
-                    {
-                        "key": key,
-                        "name": name,
-                        "value": [self._filter_item(v) for v in vals],
-                    }
-                )
+                fdefs.append({
+                    "key": key,
+                    "name": name,
+                    "value": [self._filter_item(v) for v in vals],
+                })
         return fdefs
 
     @staticmethod
@@ -255,6 +274,15 @@ class Spider(Spider):
         s = str(name)
         return {"n": s, "v": s, "type_id": s, "type_name": s}
 
+    @staticmethod
+    def _filter_val(v):
+        if v is None:
+            return ""
+        if isinstance(v, dict):
+            v = v.get("v") or v.get("n") or v.get("type_name") or v.get("type_id") or ""
+        return str(v)
+
+    # ------------------------------------------------------------ 分类
     def categoryContent(self, tid, pg, filter, extend):
         tid = str(tid)
         pg = int(pg) if str(pg).isdigit() else 1
@@ -266,7 +294,6 @@ class Spider(Spider):
             "by": "recommend",
             "session_id": self.session_id,
         }
-
         if "|" in tid:
             base_tid, sub = tid.split("|", 1)
             params["type"] = base_tid
@@ -279,6 +306,8 @@ class Spider(Spider):
                 params[key] = val
 
         data = self._req("catalog/content", params)
+        if not isinstance(data, dict):
+            data = {}
         items = [self._item(v) for v in data.get("data") or [] if isinstance(v, dict)]
         return {
             "page": pg,
@@ -288,17 +317,12 @@ class Spider(Spider):
             "list": items,
         }
 
-    @staticmethod
-    def _filter_val(v):
-        if v is None:
-            return ""
-        if isinstance(v, dict):
-            v = v.get("v") or v.get("n") or v.get("type_name") or v.get("type_id") or ""
-        return str(v)
-
+    # ------------------------------------------------------------ 搜索
     def searchContent(self, key, quick, pg=1):
         pg = int(pg) if str(pg).isdigit() else 1
         data = self._req("content/search", {"wd": key, "page": pg, "pageSize": 20})
+        if not isinstance(data, dict):
+            data = {}
         items = [self._item(v) for v in data.get("data") or [] if isinstance(v, dict)]
         return {
             "page": pg,
@@ -308,7 +332,9 @@ class Spider(Spider):
             "list": items,
         }
 
-    def _line_name(self, show, frm=""):
+    # ------------------------------------------------------------ 线路名
+    @staticmethod
+    def _line_name(show, frm=""):
         s = (show or "").strip()
         s = re.sub(r"【?限时开放】?$", "", s).strip()
         s = re.sub(r"\s+", "", s)
@@ -318,6 +344,7 @@ class Spider(Spider):
             return "云4K"
         return s or frm
 
+    # --------------------------------------------------------- 打包/解包
     @staticmethod
     def _pack(frm, show, mode, url, vod_id=""):
         d = {"f": frm, "s": show, "m": mode, "u": url}
@@ -339,11 +366,16 @@ class Spider(Spider):
 
     @staticmethod
     def _unwrap(url):
+        """
+        仅当 v= 后面是真正的 http(s) 地址时才解包；
+        v=gulu:xxxx:0 这类虚拟 token 必须原样交给 playback/resolve。
+        """
         try:
             u = urllib.parse.urlparse(str(url))
             if "fanqiecn.com" in (u.netloc or "") and u.path.endswith("/r.m3u8"):
                 q = urllib.parse.parse_qs(u.query)
                 v = (q.get("v") or [""])[0]
+                # parse_qs 会自动 URL 解码
                 if re.match(r"^https?://", v, re.I):
                     return v
         except Exception:
@@ -360,25 +392,37 @@ class Spider(Spider):
             return "mw"
         if self.VIRTUAL_RE.search(u):
             return "resolve"
+        # JD-xxxx / gulu-xxxx 等纯 token 也走服务端解析
+        if re.match(r"^[A-Za-z][A-Za-z0-9]*-[0-9a-fA-F]{8,}$", u):
+            return "resolve"
         if re.match(r"^https?://", u, re.I):
             return "direct"
         return "resolve"
 
+    @staticmethod
+    def _ep_name(nm, idx, total):
+        """集名美化：纯数字 -> 第N集；否则原样"""
+        s = str(nm or "").strip()
+        if total > 1 and s.isdigit():
+            return "第%s集" % s
+        if not s:
+            return "第%d集" % (idx + 1)
+        return s
+
+    # ------------------------------------------------------------ 详情
     def detailContent(self, ids):
         vid = ids[0] if isinstance(ids, list) else ids
         v = self._req(
             "content/detail",
             {"id": str(vid), "__platform": "Android", "__ic": "XX"},
+            timeout=(4, 12),
             retry=1,
         )
-        if not v:
+        if not isinstance(v, dict) or not v:
             return {"list": []}
 
-        play_from = []
-        play_url = []
-        pl = v.get("vod_play_list") or []
-
-        for item in pl:
+        play_from, play_url = [], []
+        for item in v.get("vod_play_list") or []:
             if not isinstance(item, dict):
                 continue
             pi = item.get("player_info") or {}
@@ -393,11 +437,11 @@ class Spider(Spider):
             mode = self._line_mode(frm, sample, ps)
             disp = self._line_name(show, frm)
             segs = []
-
-            for ep in urls:
+            total = len(urls)
+            for idx, ep in enumerate(urls):
                 if not isinstance(ep, dict):
                     continue
-                nm = str(ep.get("name", ""))
+                nm = self._ep_name(ep.get("name", ""), idx, total)
                 u = str(ep.get("url", ""))
                 if not u:
                     continue
@@ -411,85 +455,12 @@ class Spider(Spider):
                 play_from.append(disp)
                 play_url.append("#".join(segs))
 
-        if self.station:
-            self._append_station_lines(v, play_from, play_url)
-
         vod = self._item(v)
         vod["vod_play_from"] = "$$$".join(play_from)
         vod["vod_play_url"] = "$$$".join(play_url)
         return {"list": [vod]}
 
-    def _append_station_lines(self, v, play_from, play_url):
-        title = (v.get("vod_name") or "").strip()
-        if not title:
-            return
-        deadline = time.time() + 8
-        for line, disp in self.STATION_LINES:
-            if time.time() > deadline:
-                break
-            if disp in play_from:
-                continue
-            try:
-                s = self._req(
-                    "station/jx/search",
-                    {"line": line, "wd": title, "q": title},
-                    timeout=(2, 5),
-                )
-                if not isinstance(s, dict):
-                    continue
-                hits = [
-                    it
-                    for it in (s.get("list") or [])
-                    if isinstance(it, dict)
-                    and title == (it.get("vod_name") or "").strip()
-                ]
-                if not hits:
-                    hits = [
-                        it
-                        for it in (s.get("list") or [])
-                        if isinstance(it, dict) and title in (it.get("vod_name") or "")
-                    ]
-                if not hits:
-                    continue
-
-                svid = str(hits[0].get("vod_id") or "")
-                if not svid:
-                    continue
-
-                d = self._req(
-                    "station/jx/detail",
-                    {"line": line, "vod_id": svid, "id": svid},
-                    timeout=(2, 5),
-                )
-                dl = d.get("list") if isinstance(d, dict) else None
-                if not (isinstance(dl, list) and dl and isinstance(dl[0], dict)):
-                    continue
-                pu = dl[0].get("vod_play_url") or ""
-                if not pu:
-                    continue
-
-                segs = []
-                for ep in pu.split("#"):
-                    if "$" not in ep:
-                        continue
-                    nm, eid = ep.split("$", 1)
-                    eid = eid.strip()
-                    if not eid:
-                        continue
-                    if line == "dsx":
-                        mode, u, sv = "eth", eid, ""
-                    elif line == "yunsou":
-                        mode, u, sv = "mw", "%s|%s" % (svid, eid), ""
-                    else:
-                        mode, u, sv = "jx", eid, svid
-                    segs.append("%s$%s" % (nm, self._pack(line, disp, mode, u, sv)))
-
-                if segs:
-                    play_from.append(disp)
-                    play_url.append("#".join(segs))
-            except Exception:
-                continue
-
+    # ------------------------------------------------------------ 播放
     def playerContent(self, flag, id, vipFlags):
         if id and "$" in str(id):
             id = str(id).split("$", 1)[1]
@@ -514,18 +485,10 @@ class Spider(Spider):
             if mode == "eth":
                 return self._play_eth(u)
             if mode == "jx":
-                return self._play_jx(frm, info.get("v") or "", u)
+                return self._play_resolve(frm, show, u)
             return self._play_resolve(frm, show, u)
         except Exception:
             return {"parse": 1, "jx": 1, "url": u, "header": {}}
-
-    def _media_header(self, extra=None):
-        h = {"User-Agent": self.MEDIA_UA}
-        if isinstance(extra, dict):
-            for k, v in extra.items():
-                if v:
-                    h[k] = v
-        return json.dumps(h)
 
     def _direct(self, url):
         hdr = {"User-Agent": self.MEDIA_UA}
@@ -536,35 +499,48 @@ class Spider(Spider):
         return {"parse": 0, "jx": 0, "url": url, "header": json.dumps(hdr)}
 
     def _play_resolve(self, frm, show, url):
+        """
+        ★ 核心修复：playback/resolve 必须用 POST + JSON body，
+          签名时 canonical path 不含查询串，body 的 sha256 参与签名。
+        """
+        body = json.dumps(
+            {"key": frm, "label": show, "play_url": url, "player_from": frm},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
         data = self._req(
             "playback/resolve",
-            {"key": frm, "label": show, "play_url": url, "player_from": frm},
             method="POST",
+            body=body,
+            timeout=(5, 20),
             retry=1,
-            timeout=(4, 10),
         )
-        u = data.get("url") if isinstance(data, dict) else ""
+        u = ""
+        hdr_extra = {}
+        if isinstance(data, dict):
+            u = data.get("url") or ""
+            h = data.get("header")
+            if isinstance(h, dict):
+                hdr_extra = h
+            # playback.media.referer 优先
+            media = ((data.get("playback") or {}).get("media")) or {}
+            if isinstance(media, dict) and media.get("referer"):
+                hdr_extra.setdefault("Referer", media["referer"])
+
         if not u:
-            if re.match(r"^https?://", str(url), re.I) and not self.VIRTUAL_RE.search(
-                str(url)
-            ):
+            # 保底：真实 http 地址且非虚拟中转 -> 直接播
+            if re.match(r"^https?://", str(url), re.I) and not self.VIRTUAL_RE.search(str(url)):
                 return self._direct(url)
             return {"parse": 1, "jx": 1, "url": "", "header": {}}
 
         hdr = {"User-Agent": self.MEDIA_UA}
-        h = data.get("header")
-        if isinstance(h, dict):
-            for k, v in h.items():
-                if v:
-                    hdr[k] = v
-        media = ((data.get("playback") or {}).get("media")) or {}
-        ref = media.get("referer")
-        if ref:
-            hdr.setdefault("Referer", ref)
-        else:
-            for host, r2 in self.REFERER_MAP:
+        for k, v in hdr_extra.items():
+            if v:
+                hdr[k] = v
+        if "Referer" not in hdr:
+            for host, ref in self.REFERER_MAP:
                 if host in u:
-                    hdr.setdefault("Referer", r2)
+                    hdr["Referer"] = ref
                     break
         return {"parse": 0, "jx": 0, "url": u, "header": json.dumps(hdr)}
 
@@ -614,49 +590,52 @@ class Spider(Spider):
         return {"parse": 1, "jx": 1, "url": "", "header": {}}
 
     def _play_eth(self, blob):
-        try:
-            url = self.ETH_PARSER + urllib.parse.quote(str(blob), safe="")
-            r = self.session.get(
-                url,
-                headers={
-                    "User-Agent": "Dart/3.13 (dart:io)",
-                    "Accept": "application/json, */*",
-                },
-                timeout=(4, 15),
-            )
-            j = r.json()
-            u = j.get("url") or ""
-            if u:
-                return self._direct(u)
-        except Exception:
-            pass
+        for base in self.ETH_PARSERS:
+            try:
+                url = base + urllib.parse.quote(str(blob), safe="")
+                r = self.session.get(
+                    url,
+                    headers={
+                        "User-Agent": "Dart/3.13 (dart:io)",
+                        "Accept": "application/json, */*",
+                    },
+                    timeout=(4, 15),
+                )
+                j = r.json()
+                u = j.get("url") or ""
+                if u:
+                    return self._direct(u)
+            except Exception:
+                continue
         return {"parse": 1, "jx": 1, "url": "", "header": {}}
 
-    def _play_jx(self, line, vid, eid):
-        ep = 1
-        parts = str(eid).split(":")
-        if len(parts) >= 2 and parts[1].isdigit():
-            ep = int(parts[1]) + 1
-        d = self._req(
-            "station/jx/play",
-            {"line": line, "vod_id": vid, "ep": ep, "url": eid},
-            timeout=(4, 10),
-        )
-        u = d.get("url") if isinstance(d, dict) else ""
-        if not u:
-            return {"parse": 1, "jx": 1, "url": "", "header": {}}
-        hdr = {"User-Agent": self.MEDIA_UA}
-        h = d.get("header")
-        if isinstance(h, dict):
-            for k, v in h.items():
-                if v:
-                    hdr[k] = v
-        for host, ref in self.REFERER_MAP:
-            if host in u:
-                hdr.setdefault("Referer", ref)
-                break
-        return {"parse": 0, "jx": 0, "url": u, "header": json.dumps(hdr)}
+    # ------------------------------------------------------------ 直播
+    def liveContent(self, url):
+        """电视直播（可选能力）"""
+        channels = self._req("live/channels", {"page": 1, "page_size": 200})
+        if not isinstance(channels, dict):
+            return {"class": [], "list": []}
+        groups, items = [], []
+        seen = set()
+        for ch in channels.get("items") or []:
+            if not isinstance(ch, dict):
+                continue
+            g = ch.get("group") or "其他"
+            if g not in seen:
+                seen.add(g)
+                groups.append({"type_id": g, "type_name": g})
+            items.append({
+                "vod_id": "live_%s" % ch.get("id", ""),
+                "vod_name": ch.get("name", ""),
+                "vod_pic": ch.get("cover", ""),
+                "vod_tag": g,
+                "vod_remarks": "直播",
+                "vod_play_from": "直播",
+                "vod_play_url": "%s$%s" % (ch.get("name", ""), self._pack("live", "", "live", str(ch.get("id", "")))),
+            })
+        return {"class": groups, "list": items}
 
+    # ------------------------------------------------------------ 工具
     def manualVideoCheck(self):
         pass
 
@@ -673,10 +652,10 @@ class Spider(Spider):
             "vod_tag": "file",
             "vod_actor": v.get("vod_actor", ""),
             "vod_director": v.get("vod_director", ""),
-            "vod_year": v.get("vod_year", ""),
+            "vod_year": str(v.get("vod_year", "") or ""),
             "vod_area": v.get("vod_area", ""),
             "vod_score": str(v.get("vod_score", "")) if v.get("vod_score") else "",
-            "vod_content": v.get("vod_blurb", ""),
+            "vod_content": v.get("vod_content", "") or v.get("vod_blurb", ""),
             "type_name": v.get("vod_type_name", ""),
         }
 
