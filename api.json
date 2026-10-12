@@ -141,7 +141,7 @@
     },
   {
             "key": "蝴蝶影视",
-            "name": "蝴蝶☆4 K",
+            "name": "蝴蝶｜蓝光",
             "type": 3,
             "api": "./py/蝴蝶影视.py",
             "searchable": 1,
@@ -149,8 +149,30 @@
             "quickSearch": 1,
             "filterable": 1
         },
+    {
+            "key": "多米┃影视",
+            "name": "多米｜蓝光",
+            "type": 3,
+            "api": "./py/多多.py",
+            "style": {
+                "type": "rect",
+                "ratio": 1.33
+            },
+            "quickSearch": 1
+        },
+     {
+            "key": "布布┃影视",
+            "name": "布布｜蓝光",
+            "type": 3,
+            "api": "./py/布布.py",
+            "style": {
+                "type": "rect",
+                "ratio": 1.33
+            },
+            "quickSearch": 1
+        },
 
-
+  
     {
       "key": "Yidong4K",
       "name": "哈吉咪｜秒播",
