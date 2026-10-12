@@ -170,6 +170,17 @@
             "quickSearch": 1,
             "filterable": 1
         },
+  {
+            "key": "看剧影视",
+            "name": "看剧｜蓝光",
+            "type": 3,
+            "api": "./py/看剧AI.py",
+            "searchable": 1,
+            "changeable": 1,
+            "quickSearch": 1,
+            "filterable": 1
+        },
+
    {
       "key": "hipy_js_4K-AV",
       "name": "磁力｜3 D",
