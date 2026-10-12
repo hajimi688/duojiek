@@ -190,6 +190,16 @@
             "quickSearch": 1,
             "filterable": 1
         },
+{
+            "key": "暖秋剧场",
+            "name": "暖秋剧场｜蓝光",
+            "type": 3,
+            "api": "./py/暖秋剧场.py",
+            "searchable": 1,
+            "changeable": 1,
+            "quickSearch": 1,
+            "filterable": 1
+        },
 
 
    {
