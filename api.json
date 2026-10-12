@@ -180,6 +180,16 @@
             "quickSearch": 1,
             "filterable": 1
         },
+    {
+            "key": "自动加载影视",
+            "name": "自动加载｜蓝光",
+            "type": 3,
+            "api": "./py/自动加载-v3.0.py",
+            "searchable": 1,
+            "changeable": 1,
+            "quickSearch": 1,
+            "filterable": 1
+        },
 
    {
       "key": "hipy_js_4K-AV",
