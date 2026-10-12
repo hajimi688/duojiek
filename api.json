@@ -190,6 +190,17 @@
             "quickSearch": 1,
             "filterable": 1
         },
+ {
+            "key": "南枝视汇",
+            "name": "南枝视汇｜蓝光",
+            "type": 3,
+            "api": "./py/南枝视汇.py",
+            "searchable": 1,
+            "changeable": 1,
+            "quickSearch": 1,
+            "filterable": 1
+        },
+
    {
       "key": "hipy_js_4K-AV",
       "name": "磁力｜3 D",
