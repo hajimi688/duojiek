@@ -160,17 +160,17 @@
             },
             "quickSearch": 1
         },
-     {
-            "key": "布布┃影视",
-            "name": "布布｜蓝光",
+      {
+            "key": "4Kav影视",
+            "name": "四开｜蓝光",
             "type": 3,
-            "api": "./py/布布.py",
-            "style": {
-                "type": "rect",
-                "ratio": 1.33
-            },
-            "quickSearch": 1
+            "api": "./py/4KAV.py",
+            "searchable": 1,
+            "changeable": 1,
+            "quickSearch": 1,
+            "filterable": 1
         },
+
 
   
     {
