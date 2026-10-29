@@ -153,7 +153,7 @@
             "key": "多米┃影视",
             "name": "多米｜蓝光",
             "type": 3,
-            "api": "./py/duoduo.py.py",
+            "api": "./py/duoduo.py",
             "style": {
                 "type": "rect",
                 "ratio": 1.33
