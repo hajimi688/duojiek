@@ -1,5 +1,5 @@
 {
-  "spider": "./hh.jar",
+  "spider": "./hajimi1113.jar",
   "logo": "",
   "warningText": "免费仅限测试用，请勿演示贩卖购买！提示:\n📢接口软件永远免费\n📢长期维护切勿贩卖请勿单独使用",
   "sites": [
@@ -139,27 +139,6 @@
       "quickSearch": 1,
       "filterable": 0
     },
-  {
-            "key": "蝴蝶影视",
-            "name": "蝴蝶｜蓝光",
-            "type": 3,
-            "api": "./py/蝴蝶影视.py",
-            "searchable": 1,
-            "changeable": 1,
-            "quickSearch": 1,
-            "filterable": 1
-        },
-    {
-            "key": "多米┃影视",
-            "name": "多米｜蓝光",
-            "type": 3,
-            "api": "./py/duoduo.py",
-            "style": {
-                "type": "rect",
-                "ratio": 1.33
-            },
-            "quickSearch": 1
-        },
       {
             "key": "4Kav影视",
             "name": "四开｜蓝光",
