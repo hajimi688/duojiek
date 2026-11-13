@@ -2,6 +2,8 @@
   "spider": "./hajimi1113.jar",
   "logo": "",
   "warningText": "免费仅限测试用，请勿演示贩卖购买！提示:\n📢接口软件永远免费\n📢长期维护切勿贩卖请勿单独使用",
+  "notice": "【免费仅限测试用，请勿演示贩卖购买！提示:\n📢接口软件永远免费\n📢长期维护切勿贩卖请勿单独使用】",
+  "danmaku": "http://127.0.0.1:9978/proxy?do=danmaku&name={name}&episode={episode}",
   "sites": [
             {
       "key": "豆瓣",
